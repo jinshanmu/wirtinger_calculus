@@ -2,21 +2,17 @@ name: Create Release
 
 on:
   push:
-    branches:
-      - 'main'
-      - 'master'
-    paths:
-      - 'lean-toolchain'
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
 
 jobs:
-  lean-release-tag:
-    name: Add Lean release tag
+  release:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
-    - name: lean-release-tag action
-      uses: leanprover-community/lean-release-tag@v1
-      with:
-        do-release: true
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: leanprover-community/lean-release-tag@v1

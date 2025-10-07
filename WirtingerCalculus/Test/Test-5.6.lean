@@ -30,7 +30,7 @@ variable {V : Type _} [AddCommGroup V] [Module ℂ V]
 @[simp] lemma ofReal_mul_I_smul (r : ℝ) (v : V) :
     ((r : ℂ) * I) • v = r • (I • v) := by
   calc
-    ((r : ℂ) * I) • v = (r : ℂ) • (I • v) := by rw [smul_smul]
+    ((r : ℂ) * I) • v = (r : ℂ) • (I • v) := by simp [smul_smul]
     _ = (r : ℝ) • (I • v) := rfl
 
 /-- Decomposes a `ℂ`-scalar multiplication into its real and imaginary parts. -/
@@ -38,11 +38,9 @@ lemma complexSmul_decompose (a : ℂ) (v : V) :
     a • v = (a.re : ℝ) • v + a.im • I • v := by
   calc
     a • v
-        = ((a.re : ℂ) + (a.im : ℂ) * I) • v := by simp [Complex.re_add_im a]
-    _   = (a.re : ℂ) • v + ((a.im : ℂ) * I) • v := by
-              rw [add_smul]
-    _   = (a.re : ℝ) • v + a.im • I • v := by
-              simp [ofReal_mul_I_smul]
+      = ((a.re : ℂ) + (a.im : ℂ) * I) • v := by rw [Complex.re_add_im a]
+    _ = (a.re : ℂ) • v + ((a.im : ℂ) * I) • v := by rw [add_smul]
+    _ = (a.re : ℝ) • v + a.im • I • v := by simp
 
 end smul_helpers
 
@@ -92,10 +90,13 @@ variable [AddCommGroup H] [Module ℂ H]
 variable [AddCommGroup W] [Module ℂ W]
 
 /-- Multiplication by `i` as an `ℝ`-linear map. -/
-@[simp] def J (V : Type _) [AddCommGroup V] [Module ℂ V] : V →ₗ[ℝ] V where
+def J (V : Type _) [AddCommGroup V] [Module ℂ V] : V →ₗ[ℝ] V where
   toFun := fun v => (I : ℂ) • v
   map_add' := by intro v w; simp [smul_add]
-  map_smul' := by intro r v; simpa using (smul_comm (r : ℝ) (I : ℂ) v).symm
+  map_smul' := by
+    intro r v
+    rw [smul_comm]
+    rfl
 
 @[simp] lemma J_apply {V} [AddCommGroup V] [Module ℂ V] (v : V) :
     J V v = (I : ℂ) • v := rfl
@@ -149,7 +150,7 @@ lemma Conjugation.conj_smul {V} [AddCommGroup V] [Module ℂ V]
     C.C (a • v)
         = C.C ((a.re : ℝ) • v + a.im • (I • v)) := by rw [h0]
     _   = C.C ((a.re : ℝ) • v) + C.C (a.im • (I • v)) := by
-            exact C.C.map_add ((a.re : ℝ) • v) (a.im • (I • v))
+            simp [map_add]
     _   = (a.re : ℝ) • C.C v + a.im • C.C (I • v) := by
             simp [h_smul₁, h_smul₂]
     _   = (a.re : ℝ) • C.C v + a.im • (-(I • C.C v)) := by
@@ -159,7 +160,7 @@ lemma Conjugation.conj_smul {V} [AddCommGroup V] [Module ℂ V]
     _   = ((a.re : ℂ) • C.C v) - (((a.im : ℂ) * I) • C.C v) := by
             simp
     _   = ((a.re : ℂ) - (a.im : ℂ) * I) • C.C v := by
-            rw [sub_smul]
+            simp [sub_smul]
     _   = (star a) • C.C v := by
             simp [star_eq_re_sub_im, sub_eq_add_neg]
 
@@ -170,7 +171,8 @@ section wirtinger_ops
 
 /-- Multiplication by `i` as a continuous `ℝ`-linear map. -/
 def Jc (V : Type _) [NormedAddCommGroup V] [NormedSpace ℂ V] : V →L[ℝ] V :=
-  { toLinearMap := J V, cont := continuous_const_smul (I : ℂ) }
+  { toLinearMap := J V
+    , cont := (continuous_id : Continuous fun v : V => v).const_smul (I : ℂ) }
 
 @[simp] lemma Jc_apply {V} [NormedAddCommGroup V] [NormedSpace ℂ V] (v : V) :
     Jc V v = (I : ℂ) • v := rfl
@@ -314,7 +316,7 @@ def DminusCLM_star_c_linear (f : H → ℂ) (u : H) : H →L[ℂ] ℂ :=
         { toFun := fun y => star (D y)
         , map_add' := by intro x y; simp
         , map_smul' := by intro r x; simp }
-      , cont := (continuous_star.comp D.continuous) }
+      , cont := (continuous_conj.comp D.continuous) }
       have hI_D : D (I • v) = - I • D v := by
         have h0 := congrArg (fun (T : H →L[ℝ] ℂ) => T v)
                     (isALinearR_Dminus (H:=H) (W:=ℂ) f u)
@@ -350,7 +352,7 @@ def DminusCLM_star_c_linear (f : H → ℂ) (u : H) : H →L[ℂ] ℂ :=
         _   = ((a.re : ℂ) + (a.im : ℂ) * I) * G v := hfact
         _   = a * G v := by simp [Complex.re_add_im a]
         _   = a • G v := by simp }
-  , cont := (continuous_star.comp (DminusCLM (H:=H) (W:=ℂ) f u).continuous) }
+  , cont := (continuous_conj.comp (DminusCLM (H:=H) (W:=ℂ) f u).continuous) }
 
 @[simp] lemma DminusCLM_star_c_linear_apply (f : H → ℂ) (u v : H) :
     (DminusCLM_star_c_linear (H:=H) f u) v
@@ -434,7 +436,7 @@ private def phi (B : E → F)
   have hcomp : Continuous fun y : E =>
       ((InnerProductSpace.toDual ℂ F) x) (B y) := hx.comp h_cont
   have hstar : Continuous fun y : E => star (inner (𝕜 := ℂ) x (B y)) :=
-    continuous_star.comp hcomp
+    continuous_conj.comp hcomp
   have hLcont : Continuous fun y : E => L y := by
     convert hstar using 1
     ext y; simp only [L]; simp
@@ -572,7 +574,6 @@ lemma Dminus_anticomm_J_point (f : H → W) (u v : H) :
   have h := congrArg (fun (T : H →L[ℝ] W) => T v)
               (isALinearR_Dminus (H:=H) (W:=W) f u)
   have h' := h.symm
-  -- negate both sides, then simplify
   have h'' := congrArg Neg.neg h'
   simp [ContinuousLinearMap.comp_apply, neg_neg] at h''
   exact h''
@@ -643,8 +644,8 @@ def conjCLM : ℂ →L[ℝ] ℂ :=
   , map_add' := by intro x y; simp
   , map_smul' := by
       intro r z
-      -- `(r : ℝ) • z = (r : ℂ) * z` and `star` respects multiplication.
-      simp [Algebra.smul_def] }
+      change star ((r : ℂ) * z) = (r : ℂ) * star z
+      simp [mul_comm] }
 , cont := continuous_conj }
 
 @[simp] lemma conjCLM_apply (z : ℂ) : conjCLM z = star z := rfl
@@ -678,7 +679,6 @@ lemma fderivR_conj_of_hasDeriv
   {f : H → ℂ} {u : H} {D : H →L[ℝ] ℂ}
   (hf : HasRDerivAt f u D) :
   fderivR (fun x => star (f x)) u = conjCLM.comp D := by
-  -- View `x ↦ star (f x)` as `(⇑conjCLM) ∘ f` and apply the chain rule.
   change fderiv ℝ ((⇑conjCLM) ∘ f) u = conjCLM.comp D
   simpa [Function.comp, HasRDerivAt, fderivR]
     using (((conjCLM).hasFDerivAt).comp u hf).fderiv
@@ -690,18 +690,14 @@ lemma Dplus_conj_op
   DplusCLM (H:=H) (W:=ℂ) (fun x => star (f x)) u
     = conjCLM.comp (DminusCLM (H:=H) (W:=ℂ) f u) := by
   classical
-  -- Work with `fderivR` and also the normalized `starRingEnd` form.
   have hE : fderivR (H:=H) (W:=ℂ) (fun x => star (f x)) u = conjCLM.comp D :=
     fderivR_conj_of_hasDeriv (H:=H) (u:=u) hf
-  -- Same statement but with `fderiv ℝ` and `starRingEnd`.
   have hE_star :
       fderiv ℝ (fun x => (starRingEnd ℂ) (f x)) u = conjCLM.comp D := by
-    -- first turn `fderivR` into `fderiv ℝ`, then `star` into `starRingEnd`
     have hE' : fderiv ℝ (fun x => star (f x)) u = conjCLM.comp D := by
       simpa [fderivR] using hE
     simpa using hE'
   have hDℝ : fderiv ℝ f u = D := hf.fderiv
-  -- `Aℒ` pushes through `conjCLM` with a minus sign.
   have hA :
       Aℒ (H:=H) (W:=ℂ) (conjCLM.comp D)
         = - (conjCLM.comp (Aℒ (H:=H) (W:=ℂ) D)) := by
@@ -797,20 +793,16 @@ lemma gradPlus_conj_eq_gradMinus
   (hf : HasRDerivAt f u D) :
   gradPlus (H:=H) (fun x => star (f x)) u = gradMinus (H:=H) f u := by
   classical
-  -- compare in the dual, then evaluate at `v`
   apply (InnerProductSpace.toDual ℂ H).injective
   ext v
-  -- left side at the dual
   have h1L :
       (InnerProductSpace.toDual ℂ H)
         (gradPlus (H:=H) (fun x => star (f x)) u)
       = DplusCLM_c_linear (H:=H) (fun x => star (f x)) u := by
-    -- avoid `simpa`: rewrite via `convert` + `simp`
     convert
       (LinearIsometryEquiv.apply_symm_apply
         (InnerProductSpace.toDual ℂ H)
         (DplusCLM_c_linear (H:=H) (fun x => star (f x)) u)) using 1
-  -- right side at the dual
   have h1R :
       (InnerProductSpace.toDual ℂ H)
         (gradMinus (H:=H) f u)
@@ -819,7 +811,6 @@ lemma gradPlus_conj_eq_gradMinus
       (LinearIsometryEquiv.apply_symm_apply
         (InnerProductSpace.toDual ℂ H)
         (DminusCLM_star_c_linear (H:=H) f u)) using 1
-  -- stitch the chain
   calc
     ((InnerProductSpace.toDual ℂ H)
       (gradPlus (H:=H) (fun x => star (f x)) u)) v
@@ -840,7 +831,6 @@ lemma gradMinus_conj_eq_gradPlus
   classical
   apply (InnerProductSpace.toDual ℂ H).injective
   ext v
-  -- left side at the dual
   have h1L :
       (InnerProductSpace.toDual ℂ H)
         (gradMinus (H:=H) (fun x => star (f x)) u)
@@ -849,7 +839,6 @@ lemma gradMinus_conj_eq_gradPlus
       (LinearIsometryEquiv.apply_symm_apply
         (InnerProductSpace.toDual ℂ H)
         (DminusCLM_star_c_linear (H:=H) (fun x => star (f x)) u)) using 1
-  -- right side at the dual
   have h1R :
       (InnerProductSpace.toDual ℂ H)
         (gradPlus (H:=H) f u)
@@ -858,7 +847,6 @@ lemma gradMinus_conj_eq_gradPlus
       (LinearIsometryEquiv.apply_symm_apply
         (InnerProductSpace.toDual ℂ H)
         (DplusCLM_c_linear (H:=H) f u)) using 1
-  -- stitch the chain
   calc
     ((InnerProductSpace.toDual ℂ H)
       (gradMinus (H:=H) (fun x => star (f x)) u)) v
@@ -879,17 +867,31 @@ end conjugation
 section algebraic_ops
 variable {H : Type u}
 variable [NormedAddCommGroup H] [InnerProductSpace ℂ H]
-variable [CompleteSpace H]
 
-/-! ### A tiny helper: left-multiplication by a fixed complex number as an ℝ-CLM -/
+/-! ### Helpers for scalar algebra -/
+
+@[simp] lemma star_inv (z : ℂ) : star (z)⁻¹ = (star z)⁻¹ := by
+  change (starRingEnd ℂ) (z⁻¹) = ((starRingEnd ℂ) z)⁻¹
+  exact (map_inv₀ (starRingEnd ℂ) z)
+
+@[simp] lemma mul_inv_mul_inv (a : ℂ) : a * (a⁻¹ * a⁻¹) = (a : ℂ)⁻¹ := by
+  by_cases h : a = 0
+  · simp [h]
+  · have h1 : a * a⁻¹ = (1 : ℂ) := by
+      simpa [h] using mul_inv_cancel (a := a) h
+    calc
+      a * (a⁻¹ * a⁻¹) = (a * a⁻¹) * a⁻¹ := by
+        simpa [mul_assoc]
+      _ = 1 * a⁻¹ := by simpa [h1]
+      _ = a⁻¹ := by simp
+
+/-! ### Left-multiplication by a fixed complex number as an ℝ-CLM -/
 /-- `ℂ`-left multiplication by a fixed `c` as a continuous `ℝ`-linear map. -/
 def mulLeftCLM (c : ℂ) : ℂ →L[ℝ] ℂ :=
 { toLinearMap :=
   { toFun := fun z => c * z
   , map_add' := by intro x y; simp [mul_add]
-  , map_smul' := by
-      intro r z; -- `(r : ℝ) • z = (r : ℂ) * z`
-      simp [Algebra.smul_def, mul_comm, mul_left_comm, mul_assoc] }
+  , map_smul' := by intro r z; simp [Algebra.smul_def, mul_comm, mul_left_comm] }
 , cont := by simpa using (continuous_const.mul continuous_id) }
 
 @[simp] lemma mulLeftCLM_apply (c z : ℂ) : mulLeftCLM c z = c * z := rfl
@@ -898,176 +900,109 @@ def mulLeftCLM (c : ℂ) : ℂ →L[ℝ] ℂ :=
 @[simp] lemma Aℒ_comp_mulLeftCLM (T : H →L[ℝ] ℂ) (c : ℂ) :
     Aℒ (H:=H) (W:=ℂ) ((mulLeftCLM c).comp T)
   = (mulLeftCLM c).comp (Aℒ (H:=H) (W:=ℂ) T) := by
-  ext v; simp [Aℒ, ContinuousLinearMap.comp_apply, Jc_apply, mul_comm, mul_left_comm, mul_assoc]
+  ext v; simp [Aℒ, ContinuousLinearMap.comp_apply, Jc_apply, mul_left_comm]
+
+@[simp] lemma Aℒ_add (T S : H →L[ℝ] ℂ) :
+    Aℒ (H:=H) (W:=ℂ) (T + S) = Aℒ (H:=H) (W:=ℂ) T + Aℒ (H:=H) (W:=ℂ) S := by
+  ext v; simp [Aℒ, ContinuousLinearMap.comp_apply]
+
+@[simp] lemma Aℒ_sub (T S : H →L[ℝ] ℂ) :
+    Aℒ (H:=H) (W:=ℂ) (T - S) = Aℒ (H:=H) (W:=ℂ) T - Aℒ (H:=H) (W:=ℂ) S := by
+  ext v; simp [Aℒ]
+
+@[simp] lemma Aℒ_smul_real (c : ℝ) (T : H →L[ℝ] ℂ) :
+    Aℒ (H:=H) (W:=ℂ) (c • T) = c • Aℒ (H:=H) (W:=ℂ) T := by
+  ext v; simp [Aℒ]
+
+@[simp] lemma mulLeftCLM_comp_eq_smul (c : ℂ) (D : H →L[ℝ] ℂ) :
+    (mulLeftCLM c).comp D = c • D := by
+  ext v; simp [mulLeftCLM_apply, ContinuousLinearMap.smul_apply]
+
+@[simp] lemma Aℒ_smul_complex (c : ℂ) (T : H →L[ℝ] ℂ) :
+    Aℒ (H:=H) (W:=ℂ) (c • T) = c • Aℒ (H:=H) (W:=ℂ) T := by
+  simpa [mulLeftCLM_comp_eq_smul] using
+    (Aℒ_comp_mulLeftCLM (H:=H) (T:=T) (c:=c))
+
+@[simp] lemma Aℒ_neg (T : H →L[ℝ] ℂ) :
+    Aℒ (H:=H) (W:=ℂ) (-T) = - Aℒ (H:=H) (W:=ℂ) T := by
+  ext v; simp [Aℒ]
+
+@[simp] lemma real_smul_comm_complex
+    (r : ℝ) (c : ℂ) (T : H →L[ℝ] ℂ) :
+    r • (c • T) = c • (r • T) := by
+  ext v; simp [Algebra.smul_def, mul_comm, mul_left_comm]
 
 /-! ### Linearity in the function: sums and constant complex multiples -/
 
-/-- `fderivR` of a sum. -/
 lemma fderivR_add
   {f g : H → ℂ} {u : H} {Df Dg : H →L[ℝ] ℂ}
   (hf : HasRDerivAt f u Df) (hg : HasRDerivAt g u Dg) :
   fderivR (H:=H) (W:=ℂ) (fun x => f x + g x) u = Df + Dg := by
-  -- `HasFDerivAt.add` is standard
   simpa [HasRDerivAt, fderivR] using ((hf.add hg).fderiv)
 
-/-- `fderivR` of a fixed complex multiple. -/
 lemma fderivR_const_mul
   {f : H → ℂ} {u : H} {Df : H →L[ℝ] ℂ} (c : ℂ)
   (hf : HasRDerivAt f u Df) :
   fderivR (H:=H) (W:=ℂ) (fun x => c * f x) u = (mulLeftCLM c).comp Df := by
-  -- view as composition with the fixed ℝ-linear map `mulLeftCLM c`
   simpa [Function.comp, fderivR, HasRDerivAt]
     using (((mulLeftCLM c).hasFDerivAt).comp u hf).fderiv
 
-/-- `D₊` is additive in the function. -/
 lemma Dplus_add
   {f g : H → ℂ} {u : H} {Df Dg : H →L[ℝ] ℂ}
   (hf : HasRDerivAt f u Df) (hg : HasRDerivAt g u Dg) :
   DplusCLM (H:=H) (W:=ℂ) (fun x => f x + g x) u
     = DplusCLM (H:=H) (W:=ℂ) f u + DplusCLM (H:=H) (W:=ℂ) g u := by
-  -- expand the definition and use linearity of `fderivR` and `Aℒ`
+  have hDf : fderivR (H:=H) (W:=ℂ) f u = Df := hf.fderiv
+  have hDg : fderivR (H:=H) (W:=ℂ) g u = Dg := hg.fderiv
   simp [DplusCLM, fderivR_add (H:=H) (u:=u) (hf:=hf) (hg:=hg),
-        ContinuousLinearMap.comp_add, ContinuousLinearMap.add_comp, sub_eq_add_neg, add_comm, add_left_comm, add_assoc,
-        smul_add]
+        hDf, hDg, sub_eq_add_neg, Aℒ_add, smul_add, add_comm, add_left_comm, add_assoc]
 
-/-- `D₋` is additive in the function. -/
 lemma Dminus_add
   {f g : H → ℂ} {u : H} {Df Dg : H →L[ℝ] ℂ}
   (hf : HasRDerivAt f u Df) (hg : HasRDerivAt g u Dg) :
   DminusCLM (H:=H) (W:=ℂ) (fun x => f x + g x) u
     = DminusCLM (H:=H) (W:=ℂ) f u + DminusCLM (H:=H) (W:=ℂ) g u := by
+  have hDf : fderivR (H:=H) (W:=ℂ) f u = Df := hf.fderiv
+  have hDg : fderivR (H:=H) (W:=ℂ) g u = Dg := hg.fderiv
   simp [DminusCLM, fderivR_add (H:=H) (u:=u) (hf:=hf) (hg:=hg),
-        ContinuousLinearMap.comp_add, ContinuousLinearMap.add_comp, add_comm, add_left_comm, add_assoc,
-        smul_add]
+        hDf, hDg, Aℒ_add, smul_add, add_left_comm, add_assoc]
 
-/-- `D₊` of a fixed complex multiple. -/
 lemma Dplus_const_mul
   {f : H → ℂ} {u : H} {Df : H →L[ℝ] ℂ} (c : ℂ)
   (hf : HasRDerivAt f u Df) :
   DplusCLM (H:=H) (W:=ℂ) (fun x => c * f x) u
     = (mulLeftCLM c).comp (DplusCLM (H:=H) (W:=ℂ) f u) := by
-  -- push `mulLeftCLM` through definition using `Aℒ_comp_mulLeftCLM`
+  have hDf : fderivR (H:=H) (W:=ℂ) f u = Df := hf.fderiv
   simp [DplusCLM, fderivR_const_mul (H:=H) (u:=u) (c:=c) hf,
-        ContinuousLinearMap.comp_sub, ContinuousLinearMap.sub_comp,
-        Aℒ_comp_mulLeftCLM]
+        hDf, mulLeftCLM_comp_eq_smul, Aℒ_smul_complex, sub_eq_add_neg, smul_add]
 
-/-- `D₋` of a fixed complex multiple. -/
 lemma Dminus_const_mul
   {f : H → ℂ} {u : H} {Df : H →L[ℝ] ℂ} (c : ℂ)
   (hf : HasRDerivAt f u Df) :
   DminusCLM (H:=H) (W:=ℂ) (fun x => c * f x) u
     = (mulLeftCLM c).comp (DminusCLM (H:=H) (W:=ℂ) f u) := by
+  have hDf : fderivR (H:=H) (W:=ℂ) f u = Df := hf.fderiv
   simp [DminusCLM, fderivR_const_mul (H:=H) (u:=u) (c:=c) hf,
-        ContinuousLinearMap.comp_add, ContinuousLinearMap.add_comp,
-        Aℒ_comp_mulLeftCLM]
-
-/-! ### Scalar combinations for gradients -/
-
-/-- Scalar combination for `∇₊`: \
-`∇₊(α f + β g)[u] = conj α • ∇₊ f[u] + conj β • ∇₊ g[u]`. -/
-lemma gradPlus_linear_comb
-  {f g : H → ℂ} {u : H} {Df Dg : H →L[ℝ] ℂ} (α β : ℂ)
-  (hf : HasRDerivAt f u Df) (hg : HasRDerivAt g u Dg) :
-  gradPlus (H:=H) (fun x => α * f x + β * g x) u
-    = (star α) • gradPlus (H:=H) f u + (star β) • gradPlus (H:=H) g u := by
-  -- compare in the dual and test against an arbitrary `v`
-  apply (InnerProductSpace.toDual ℂ H).injective
-  ext v
-  have hD :
-    DplusCLM (H:=H) (W:=ℂ) (fun x => α * f x + β * g x) u
-      = (mulLeftCLM α).comp (DplusCLM (H:=H) (W:=ℂ) f u)
-        + (mulLeftCLM β).comp (DplusCLM (H:=H) (W:=ℂ) g u) := by
-    simpa [map_add] using
-      (by
-        simpa [Dplus_const_mul (H:=H) (u:=u) (c:=α) hf,
-               Dplus_const_mul (H:=H) (u:=u) (c:=β) hg,
-               ContinuousLinearMap.comp_add, ContinuousLinearMap.add_comp]
-          using Dplus_add (H:=H) (u:=u)
-                (hf:=fderivR_const_mul (H:=H) (u:=u) (c:=α) hf ▸ hf)
-                (hg:=fderivR_const_mul (H:=H) (u:=u) (c:=β) hg ▸ hg))
-  -- now evaluate at `v` and move the constants across `inner`
-  have : inner (𝕜 := ℂ) (gradPlus (H:=H) (fun x => α * f x + β * g x) u) v
-            = α * inner (𝕜 := ℂ) (gradPlus (H:=H) f u) v
-              + β * inner (𝕜 := ℂ) (gradPlus (H:=H) g u) v := by
-    simp [inner_gradPlus_eq_Dplus, hD, ContinuousLinearMap.add_apply,
-          ContinuousLinearMap.comp_apply, mulLeftCLM_apply, add_comm, add_left_comm, add_assoc]
-  -- rewrite RHS as an inner product again
-  calc
-    ((InnerProductSpace.toDual ℂ H)
-      (gradPlus (H:=H) (fun x => α * f x + β * g x) u)) v
-        = _ := rfl
-    _ = α * inner (𝕜 := ℂ) (gradPlus (H:=H) f u) v
-          + β * inner (𝕜 := ℂ) (gradPlus (H:=H) g u) v := this
-    _ = inner (𝕜 := ℂ) ((star α) • gradPlus (H:=H) f u) v
-          + inner (𝕜 := ℂ) ((star β) • gradPlus (H:=H) g u) v := by
-          simp [inner_smul_left]
-    _ = ((InnerProductSpace.toDual ℂ H)
-          ((star α) • gradPlus (H:=H) f u + (star β) • gradPlus (H:=H) g u)) v := by
-          simp [map_add]
-  -- done by `ext v`
-
-/-- Scalar combination for `∇₋`: \
-`∇₋(α f + β g)[u] = α • ∇₋ f[u] + β • ∇₋ g[u]`. -/
-lemma gradMinus_linear_comb
-  {f g : H → ℂ} {u : H} {Df Dg : H →L[ℝ] ℂ} (α β : ℂ)
-  (hf : HasRDerivAt f u Df) (hg : HasRDerivAt g u Dg) :
-  gradMinus (H:=H) (fun x => α * f x + β * g x) u
-    = α • gradMinus (H:=H) f u + β • gradMinus (H:=H) g u := by
-  apply (InnerProductSpace.toDual ℂ H).injective
-  ext v
-  have hD :
-    DminusCLM (H:=H) (W:=ℂ) (fun x => α * f x + β * g x) u
-      = (mulLeftCLM α).comp (DminusCLM (H:=H) (W:=ℂ) f u)
-        + (mulLeftCLM β).comp (DminusCLM (H:=H) (W:=ℂ) g u) := by
-    simpa using
-      (by
-        simpa [Dminus_const_mul (H:=H) (u:=u) (c:=α) hf,
-               Dminus_const_mul (H:=H) (u:=u) (c:=β) hg,
-               ContinuousLinearMap.comp_add, ContinuousLinearMap.add_comp]
-          using Dminus_add (H:=H) (u:=u)
-                (hf:=fderivR_const_mul (H:=H) (u:=u) (c:=α) hf ▸ hf)
-                (hg:=fderivR_const_mul (H:=H) (u:=u) (c:=β) hg ▸ hg))
-  have : inner (𝕜 := ℂ) v (gradMinus (H:=H) (fun x => α * f x + β * g x) u)
-             = α * inner (𝕜 := ℂ) v (gradMinus (H:=H) f u)
-               + β * inner (𝕜 := ℂ) v (gradMinus (H:=H) g u) := by
-    simp [Dminus_eq_inner_gradMinus, hD, ContinuousLinearMap.add_apply,
-          ContinuousLinearMap.comp_apply, mulLeftCLM_apply, add_comm, add_left_comm, add_assoc]
-  calc
-    ((InnerProductSpace.toDual ℂ H)
-      (gradMinus (H:=H) (fun x => α * f x + β * g x) u)) v
-        = inner (𝕜 := ℂ) v (gradMinus (H:=H) (fun x => α * f x + β * g x) u) := rfl
-    _ = α * inner (𝕜 := ℂ) v (gradMinus (H:=H) f u)
-          + β * inner (𝕜 := ℂ) v (gradMinus (H:=H) g u) := this
-    _ = inner (𝕜 := ℂ) v (α • gradMinus (H:=H) f u)
-          + inner (𝕜 := ℂ) v (β • gradMinus (H:=H) g u) := by
-          simp [inner_smul_right]
-    _ = ((InnerProductSpace.toDual ℂ H)
-          (α • gradMinus (H:=H) f u + β • gradMinus (H:=H) g u)) v := by
-          simp [map_add]
+        hDf, mulLeftCLM_comp_eq_smul, Aℒ_smul_complex, smul_add]
 
 /-! ### Product rule for `D₊`/`D₋` and Gradients -/
 
-/-- Product rule for `D₊` (operator level). -/
 lemma Dplus_mul
   {f g : H → ℂ} {u : H} {Df Dg : H →L[ℝ] ℂ}
   (hf : HasRDerivAt f u Df) (hg : HasRDerivAt g u Dg) :
   DplusCLM (H:=H) (W:=ℂ) (fun x => f x * g x) u
     = (mulLeftCLM (f u)).comp (DplusCLM (H:=H) (W:=ℂ) g u)
       + (mulLeftCLM (g u)).comp (DplusCLM (H:=H) (W:=ℂ) f u) := by
-  -- expand `Dplus` and use the classical product rule for `fderivR`,
-  -- then push fixed multiplications through `Aℒ`
   have hmul :
     fderivR (H:=H) (W:=ℂ) (fun x => f x * g x) u
       = (mulLeftCLM (f u)).comp (fderivR (H:=H) (W:=ℂ) g u)
         + (mulLeftCLM (g u)).comp (fderivR (H:=H) (W:=ℂ) f u) := by
-    -- standard in `mathlib`: `HasFDerivAt.mul`
-    simpa [HasRDerivAt, fderivR, ContinuousLinearMap.comp_add, ContinuousLinearMap.add_comp]
-      using ((hf.mul hg).fderiv)
-  simp [DplusCLM, hmul, ContinuousLinearMap.comp_sub, ContinuousLinearMap.sub_comp,
-        ContinuousLinearMap.comp_add, ContinuousLinearMap.add_comp,
-        Aℒ_comp_mulLeftCLM, add_comm, add_left_comm, add_assoc, sub_eq_add_neg, smul_add]
+    simpa [fderivR, mulLeftCLM_comp_eq_smul, Pi.mul_def, hf.fderiv, hg.fderiv]
+      using (HasFDerivAt.fderiv (HasFDerivAt.mul hf hg))
+  simp [DplusCLM, hmul, ContinuousLinearMap.comp_add,
+        add_comm, add_left_comm, add_assoc,
+        sub_eq_add_neg, smul_add]
 
-/-- Product rule for `D₋` (operator level). -/
 lemma Dminus_mul
   {f g : H → ℂ} {u : H} {Df Dg : H →L[ℝ] ℂ}
   (hf : HasRDerivAt f u Df) (hg : HasRDerivAt g u Dg) :
@@ -1078,13 +1013,91 @@ lemma Dminus_mul
     fderivR (H:=H) (W:=ℂ) (fun x => f x * g x) u
       = (mulLeftCLM (f u)).comp (fderivR (H:=H) (W:=ℂ) g u)
         + (mulLeftCLM (g u)).comp (fderivR (H:=H) (W:=ℂ) f u) := by
-    simpa [HasRDerivAt, fderivR, ContinuousLinearMap.comp_add, ContinuousLinearMap.add_comp]
-      using ((hf.mul hg).fderiv)
-  simp [DminusCLM, hmul, ContinuousLinearMap.comp_add, ContinuousLinearMap.add_comp,
-        Aℒ_comp_mulLeftCLM, add_comm, add_left_comm, add_assoc, smul_add]
+    simpa [fderivR, mulLeftCLM_comp_eq_smul, Pi.mul_def, hf.fderiv, hg.fderiv]
+      using (HasFDerivAt.fderiv (HasFDerivAt.mul hf hg))
+  simp [DminusCLM, hmul, ContinuousLinearMap.comp_add, smul_add,
+        add_comm, add_left_comm, add_assoc]
 
-/-- Product rule for `∇₊`: \
-`∇₊(fg)[u] = conj (f[u]) • ∇₊ g[u] + conj (g[u]) • ∇₊ f[u]`. -/
+@[simp] lemma inner_smul_right_comm (x y : H) (a : ℂ) :
+    inner (𝕜 := ℂ) x (a • y) = inner (𝕜 := ℂ) x y * a := by
+  simpa [mul_comm] using (inner_smul_right (x := x) (y := y) (a := a))
+
+@[simp] lemma inner_smul_left_comm (a : ℂ) (x y : H) :
+    inner (𝕜 := ℂ) (a • x) y = inner (𝕜 := ℂ) x y * (star a) := by
+  simpa [mul_comm] using (inner_smul_left (a := a) (x := x) (y := y))
+
+variable [CompleteSpace H]
+
+/-- Scalar combination for `∇₊`: \
+`∇₊(α f + β g)[u] = conj α • ∇₊ f[u] + conj β • ∇₊ g[u]`. -/
+lemma gradPlus_linear_comb
+  {f g : H → ℂ} {u : H} {Df Dg : H →L[ℝ] ℂ} (α β : ℂ)
+  (hf : HasRDerivAt f u Df) (hg : HasRDerivAt g u Dg) :
+  gradPlus (H:=H) (fun x => α * f x + β * g x) u
+    = (star α) • gradPlus (H:=H) f u + (star β) • gradPlus (H:=H) g u := by
+  have hfα : HasRDerivAt (fun x => α * f x) u ((mulLeftCLM α).comp Df) := by
+    simpa [HasRDerivAt] using (((mulLeftCLM α).hasFDerivAt).comp u hf)
+  have hgβ : HasRDerivAt (fun x => β * g x) u ((mulLeftCLM β).comp Dg) := by
+    simpa [HasRDerivAt] using (((mulLeftCLM β).hasFDerivAt).comp u hg)
+  have hD :
+    DplusCLM (H:=H) (W:=ℂ) (fun x => α * f x + β * g x) u
+      = (mulLeftCLM α).comp (DplusCLM (H:=H) (W:=ℂ) f u)
+        + (mulLeftCLM β).comp (DplusCLM (H:=H) (W:=ℂ) g u) := by
+    simpa using
+      (by
+        have := Dplus_add (H:=H) (u:=u) (hf:=hfα) (hg:=hgβ)
+        simpa [Dplus_const_mul (H:=H) (u:=u) (c:=α) hf,
+               Dplus_const_mul (H:=H) (u:=u) (c:=β) hg,
+               ContinuousLinearMap.comp_add, ContinuousLinearMap.add_comp] using this)
+  apply (InnerProductSpace.toDual ℂ H).injective
+  ext v
+  have base :
+      inner (𝕜 := ℂ) (gradPlus (H:=H) (fun x => α * f x + β * g x) u) v
+        = α * inner (𝕜 := ℂ) (gradPlus (H:=H) f u) v
+          + β * inner (𝕜 := ℂ) (gradPlus (H:=H) g u) v := by
+    simp [inner_gradPlus_eq_Dplus, hD, ContinuousLinearMap.add_apply]
+  simpa [inner_add_left, inner_smul_left] using base
+
+/-- Scalar combination for `∇₋`: \
+`∇₋(α f + β g)[u] = α • ∇₋ f[u] + β • ∇₋ g[u]`. -/
+lemma gradMinus_linear_comb
+  {f g : H → ℂ} {u : H} {Df Dg : H →L[ℝ] ℂ} (α β : ℂ)
+  (hf : HasRDerivAt f u Df) (hg : HasRDerivAt g u Dg) :
+  gradMinus (H:=H) (fun x => α * f x + β * g x) u
+    = α • gradMinus (H:=H) f u + β • gradMinus (H:=H) g u := by
+  have hfα : HasRDerivAt (fun x => α * f x) u ((mulLeftCLM α).comp Df) := by
+    simpa [HasRDerivAt] using (((mulLeftCLM α).hasFDerivAt).comp u hf)
+  have hgβ : HasRDerivAt (fun x => β * g x) u ((mulLeftCLM β).comp Dg) := by
+    simpa [HasRDerivAt] using (((mulLeftCLM β).hasFDerivAt).comp u hg)
+  have hD :
+    DminusCLM (H:=H) (W:=ℂ) (fun x => α * f x + β * g x) u
+      = (mulLeftCLM α).comp (DminusCLM (H:=H) (W:=ℂ) f u)
+        + (mulLeftCLM β).comp (DminusCLM (H:=H) (W:=ℂ) g u) := by
+    simpa using
+      (by
+        have := Dminus_add (H:=H) (u:=u) (hf:=hfα) (hg:=hgβ)
+        simpa [Dminus_const_mul (H:=H) (u:=u) (c:=α) hf,
+               Dminus_const_mul (H:=H) (u:=u) (c:=β) hg,
+               ContinuousLinearMap.comp_add, ContinuousLinearMap.add_comp] using this)
+  apply (InnerProductSpace.toDual ℂ H).injective
+  ext v
+  have base :
+      inner (𝕜 := ℂ) v (gradMinus (H:=H) (fun x => α * f x + β * g x) u)
+        = α * inner (𝕜 := ℂ) v (gradMinus (H:=H) f u)
+          + β * inner (𝕜 := ℂ) v (gradMinus (H:=H) g u) := by
+    simp [Dminus_eq_inner_gradMinus, hD, ContinuousLinearMap.add_apply,
+          ContinuousLinearMap.comp_apply, mulLeftCLM_apply,
+          add_comm, add_left_comm, add_assoc]
+  have base' := congrArg star base
+  have base'' :
+      inner (𝕜 := ℂ) (gradMinus (H:=H) (fun x => α * f x + β * g x) u) v
+        = (star α) * inner (𝕜 := ℂ) (gradMinus (H:=H) f u) v
+          + (star β) * inner (𝕜 := ℂ) (gradMinus (H:=H) g u) v := by
+    simpa [star_add, star_mul, inner_conj_symm, mul_comm] using base'
+  simpa [inner_add_left, inner_smul_left] using base''
+
+/-! ### Products turned into gradients -/
+
 lemma gradPlus_mul
   {f g : H → ℂ} {u : H} {Df Dg : H →L[ℝ] ℂ}
   (hf : HasRDerivAt f u Df) (hg : HasRDerivAt g u Dg) :
@@ -1094,12 +1107,8 @@ lemma gradPlus_mul
   apply (InnerProductSpace.toDual ℂ H).injective
   ext v
   have hD := Dplus_mul (H:=H) (u:=u) (hf:=hf) (hg:=hg)
-  simp [inner_gradPlus_eq_Dplus, hD, ContinuousLinearMap.add_apply,
-        ContinuousLinearMap.comp_apply, mulLeftCLM_apply,
-        inner_add_left, inner_smul_left] -- move scalars to the first slot with conjugate
+  simp [inner_gradPlus_eq_Dplus, hD, ContinuousLinearMap.add_apply, inner_smul_left]
 
-/-- Product rule for `∇₋`: \
-`∇₋(fg)[u] = f[u] • ∇₋ g[u] + g[u] • ∇₋ f[u]`. -/
 lemma gradMinus_mul
   {f g : H → ℂ} {u : H} {Df Dg : H →L[ℝ] ℂ}
   (hf : HasRDerivAt f u Df) (hg : HasRDerivAt g u Dg) :
@@ -1109,176 +1118,194 @@ lemma gradMinus_mul
   apply (InnerProductSpace.toDual ℂ H).injective
   ext v
   have hD := Dminus_mul (H:=H) (u:=u) (hf:=hf) (hg:=hg)
-  simp [Dminus_eq_inner_gradMinus, hD, ContinuousLinearMap.add_apply,
-        ContinuousLinearMap.comp_apply, mulLeftCLM_apply,
-        inner_add_right, inner_smul_right] -- move scalars to the second slot linearly
+  have h2 :
+      inner (𝕜 := ℂ) v (gradMinus (H:=H) (fun x => f x * g x) u)
+        = (f u) * inner (𝕜 := ℂ) v (gradMinus (H:=H) g u)
+          + (g u) * inner (𝕜 := ℂ) v (gradMinus (H:=H) f u) := by
+    simp [Dminus_eq_inner_gradMinus, hD, ContinuousLinearMap.add_apply,
+          ContinuousLinearMap.comp_apply, mulLeftCLM_apply]
+  have h1 := congrArg star h2
+  simpa [star_add, star_mul, inner_conj_symm, mul_comm] using h1
 
-/-! ### Reciprocal and quotient -/
+/-! ### Inverse and quotient -/
 
-/-- `∇₊(1/g)[u] = - ∇₊ g[u] / (conj (g[u]))^2`, assuming `g[u] ≠ 0`. -/
-lemma gradPlus_inv
+/-- `(((1 : ℂ →L[ℂ] ℂ).smulRight c).restrictScalars ℝ)` is just left-multiplication by `c`. -/
+@[simp] lemma smulRight_id_restrict_eq_mulLeft (c : ℂ) :
+    (((1 : ℂ →L[ℂ] ℂ).smulRight c).restrictScalars ℝ) = mulLeftCLM c := by
+  ext z; simp [mul_comm]
+
+/-- Build `HasRDerivAt` for `x ↦ (g x)⁻¹` in the `-((g u)⁻¹ * (g u)⁻¹)` shape. -/
+lemma hasRDerivAt_inv_from_hasDeriv
   {g : H → ℂ} {u : H} {Dg : H →L[ℝ] ℂ}
   (hg : HasRDerivAt g u Dg) (hgu : g u ≠ 0) :
-  gradPlus (H:=H) (fun x => (g x)⁻¹) u
-    = - ( (1 : ℂ) / (star (g u))^2 ) • gradPlus (H:=H) g u := by
-  -- From `g * (1/g) = 1`, apply the product rule for `∇₊`
-  have h_prod := gradPlus_mul (H:=H) (u:=u) (hf:=hg)
-                               (hg:=(by
-                                  -- derivative of `x ↦ (g x)⁻¹` exists since `g u ≠ 0`
-                                  -- use chain rule via `(z ↦ z⁻¹)` which is `ℝ`-differentiable on `ℂ \ {0}`
-                                  -- we only need it implicitly through the identity `g * (1/g) = 1`
-                                  exact hg))
-  -- Evaluate the identity `∇₊(g * (1/g))[u] = 0`
-  have h0 : gradPlus (H:=H) (fun x => g x * (g x)⁻¹) u = 0 := by
-    -- constant function `1` has zero gradient
-    have : (fun _ : H => (1 : ℂ)) = fun x => g x * (g x)⁻¹ := by
-      funext x; by_cases hx : g x = 0
-      · simp [hx]
-      · simp [hx]
-    -- `∇₊` of a constant is `0`
-    simpa [this] using (by
-      have : gradPlus (H:=H) (fun _ : H => (1 : ℂ)) u = 0 := by
-        -- from definition via Riesz because `DplusCLM` is zero
-        apply by
-          apply (InnerProductSpace.toDual ℂ H).injective
-          ext v; simp [gradPlus, DplusCLM, fderivR]; decide)
-      exact this)
-  -- Now expand the product rule: `0 = conj(g u) • ∇₊(1/g)[u] + conj((1/g) u) • ∇₊ g[u]`
-  -- and solve for `∇₊(1/g)[u]`.
-  have : conj (g u) • gradPlus (H:=H) (fun x => (g x)⁻¹) u
-           + conj ((fun x => (g x)⁻¹) u) • gradPlus (H:=H) g u = 0 := by
-    -- rewrite `h_prod` specialized to `(g, fun x => (g x)⁻¹)`
-    simpa [Pi.mul_def] using
-      (by
-        -- use the product rule lemma directly on the function pair
-        simpa using
-          (gradPlus_mul (H:=H) (u:=u) (hf:=hg) (hg:=hg)))
-  -- Solve the linear equation in the Hilbert space
-  have hsolve :
-    gradPlus (H:=H) (fun x => (g x)⁻¹) u
-      = - ( (conj ((fun x => (g x)⁻¹) u)) / (conj (g u)) ) • gradPlus (H:=H) g u := by
-    have hc : conj (g u) ≠ 0 := by
-      have : g u ≠ 0 := hgu
-      simpa using congrArg star.ne_iff.mpr this
-    -- rearrange: `conj g • X = - conj (1/g) • ∇₊ g`
-    have := congrArg (fun w => ( (conj (g u))⁻¹ ) • w) (by
-      simpa [add_comm] using this)
-    simpa [smul_add, inv_mul_cancel hc, one_smul, smul_neg, neg_smul,
-            mul_comm, mul_left_comm, mul_assoc, div_eq_mul_inv]
-      using this
-  -- simplify conjugates of inverses and powers
-  simpa [one_div, map_inv₀, star_pow] using hsolve
+  HasRDerivAt (fun x => (g x)⁻¹) u
+    ((mulLeftCLM ( - ((g u)⁻¹ * (g u)⁻¹))).comp Dg) := by
+  have hC :
+      HasFDerivAt (fun z : ℂ => z⁻¹)
+        ((1 : ℂ →L[ℂ] ℂ).smulRight ( - ((g u)⁻¹ * (g u)⁻¹) )) (g u) := by
+    simpa using ((hasDerivAt_inv (by simpa using hgu)).hasFDerivAt)
+  have hR := hC.restrictScalars ℝ
+  simpa [HasRDerivAt, fderivR, smulRight_id_restrict_eq_mulLeft]
+    using (hR.comp u hg)
 
-/-- `∇₋(1/g)[u] = - ∇₋ g[u] / (g[u])^2`, assuming `g[u] ≠ 0`. -/
+/-- `∇₋(1/g)[u] = - (g[u]⁻¹ * g[u]⁻¹) • ∇₋ g[u]`, assuming `g[u] ≠ 0`. -/
 lemma gradMinus_inv
   {g : H → ℂ} {u : H} {Dg : H →L[ℝ] ℂ}
   (hg : HasRDerivAt g u Dg) (hgu : g u ≠ 0) :
   gradMinus (H:=H) (fun x => (g x)⁻¹) u
-    = - ( (1 : ℂ) / (g u)^2 ) • gradMinus (H:=H) g u := by
-  -- use `∇₋` product rule on `g * (1/g) = 1`
-  have h0 : gradMinus (H:=H) (fun x => g x * (g x)⁻¹) u = 0 := by
-    apply by
-      apply (InnerProductSpace.toDual ℂ H).injective
-      ext v; simp [gradMinus, DminusCLM, fderivR]
-  have hprod := gradMinus_mul (H:=H) (u:=u) (hf:=hg) (hg:=hg)
-  have : (g u) • gradMinus (H:=H) (fun x => (g x)⁻¹) u
-           + ((fun x => (g x)⁻¹) u) • gradMinus (H:=H) g u = 0 := by
-    simpa using hprod
-  have hg0 : g u ≠ 0 := hgu
-  have hsolve :
-    gradMinus (H:=H) (fun x => (g x)⁻¹) u
-      = - (((fun x => (g x)⁻¹) u) / (g u)) • gradMinus (H:=H) g u := by
-    have hc : (g u) ≠ 0 := hg0
-    have := congrArg (fun w => ((g u)⁻¹) • w) (by
-      simpa [add_comm] using this)
-    simpa [smul_add, inv_mul_cancel hc, one_smul, smul_neg, neg_smul,
-           mul_comm, mul_left_comm, mul_assoc, div_eq_mul_inv] using this
-  -- `(1/g u) / (g u) = 1 / (g u)^2`
-  simpa [one_div, div_eq_mul_inv, mul_comm, mul_left_comm, mul_assoc, inv_pow] using hsolve
+    = - ((g u)⁻¹ * (g u)⁻¹) • gradMinus (H:=H) g u := by
+  have h_inv : HasRDerivAt (fun x => (g x)⁻¹) u
+      ((mulLeftCLM ( - ((g u)⁻¹ * (g u)⁻¹))).comp Dg) :=
+    hasRDerivAt_inv_from_hasDeriv (H:=H) (u:=u) (Dg:=Dg) hg hgu
+  have hD :
+      DminusCLM (H:=H) (W:=ℂ) (fun x => (g x)⁻¹) u
+        = (mulLeftCLM ( -((g u)⁻¹ * (g u)⁻¹))).comp (DminusCLM (H:=H) (W:=ℂ) g u) := by
+    unfold DminusCLM
+    simp [fderivR, hg.fderiv, h_inv.fderiv, Aℒ_comp_mulLeftCLM]
+  apply (InnerProductSpace.toDual ℂ H).injective; ext v
+  have : inner (𝕜 := ℂ) v (gradMinus (H:=H) (fun x => (g x)⁻¹) u)
+            = - ((g u)⁻¹ * (g u)⁻¹) * inner (𝕜 := ℂ) v (gradMinus (H:=H) g u) := by
+    simp [Dminus_eq_inner_gradMinus, hD, ContinuousLinearMap.comp_apply,
+          mulLeftCLM_apply, mul_comm]
+  simpa [inner_smul_left] using this
 
-/-- Quotient rule for `∇₊`:
-`∇₊(f/g)[u] = ((conj (g[u])) • ∇₊ f[u] - (conj (f[u])) • ∇₊ g[u]) / (conj (g[u]))^2`,
-assuming `g[u] ≠ 0`. -/
+/-- `∇₊(1/g)[u] = - ((conj g[u])⁻¹ * (conj g[u])⁻¹) • ∇₊ g[u]`, assuming `g[u] ≠ 0`. -/
+lemma gradPlus_inv
+  {g : H → ℂ} {u : H} {Dg : H →L[ℝ] ℂ}
+  (hg : HasRDerivAt g u Dg) (hgu : g u ≠ 0) :
+  gradPlus (H:=H) (fun x => (g x)⁻¹) u
+    = - ((star (g u))⁻¹ * (star (g u))⁻¹) • gradPlus (H:=H) g u := by
+  have h_inv : HasRDerivAt (fun x => (g x)⁻¹) u
+      ((mulLeftCLM ( - ((g u)⁻¹ * (g u)⁻¹))).comp Dg) :=
+    hasRDerivAt_inv_from_hasDeriv (H:=H) (u:=u) (Dg:=Dg) hg hgu
+  have hD :
+      DplusCLM (H:=H) (W:=ℂ) (fun x => (g x)⁻¹) u
+        = (mulLeftCLM ( -((g u)⁻¹ * (g u)⁻¹))).comp (DplusCLM (H:=H) (W:=ℂ) g u) := by
+    unfold DplusCLM
+    simp [fderivR, hg.fderiv, h_inv.fderiv, Aℒ_comp_mulLeftCLM]
+  apply (InnerProductSpace.toDual ℂ H).injective; ext v
+  have : inner (𝕜 := ℂ) (gradPlus (H:=H) (fun x => (g x)⁻¹) u) v
+            = - ((g u)⁻¹ * (g u)⁻¹) * inner (𝕜 := ℂ) (gradPlus (H:=H) g u) v := by
+    simp [inner_gradPlus_eq_Dplus, hD, ContinuousLinearMap.comp_apply,
+          mulLeftCLM_apply, mul_comm]
+  -- move the scalar to the first slot; stars appear
+  have h★ := congrArg star this
+  simpa [inner_conj_symm, star_mul, star_inv, inner_smul_left, map_neg] using h★
+
+/-- Quotient rule for `∇₊` (product-of-inverses shape), assuming `g[u] ≠ 0`. -/
 lemma gradPlus_div
   {f g : H → ℂ} {u : H} {Df Dg : H →L[ℝ] ℂ}
   (hf : HasRDerivAt f u Df) (hg : HasRDerivAt g u Dg) (hgu : g u ≠ 0) :
   gradPlus (H:=H) (fun x => f x / g x) u
-    = ((star (g u)) • gradPlus (H:=H) f u
-        - (star (f u)) • gradPlus (H:=H) g u) / (star (g u))^2 := by
-  -- `f/g = f * (1/g)` and apply product + inverse formulas
-  have h := gradPlus_mul (H:=H) (u:=u) (hf:=hf) (hg:=hg)
+    = ((star (g u))⁻¹ * (star (g u))⁻¹) •
+        ( (star (g u)) • gradPlus (H:=H) f u
+          - (star (f u)) • gradPlus (H:=H) g u ) := by
+  have hInv : HasRDerivAt (fun x => (g x)⁻¹) u
+      ((mulLeftCLM ( - ((g u)⁻¹ * (g u)⁻¹))).comp Dg) :=
+    hasRDerivAt_inv_from_hasDeriv (H:=H) (u:=u) (Dg:=Dg) hg hgu
+  have hmul := gradPlus_mul (H:=H) (u:=u) (hf:=hf) (hg:=hInv)
+  have hfg : (fun x => f x / g x) = (fun x => f x * (g x)⁻¹) := by
+    funext x; simp [Pi.div_def]
   have hinv := gradPlus_inv (H:=H) (u:=u) (hg:=hg) hgu
-  -- expand and collect
-  have : gradPlus (H:=H) (fun x => f x / g x) u
-          = (star (f u)) • gradPlus (H:=H) (fun x => (g x)⁻¹) u
-            + (star ((fun x => (g x)⁻¹) u)) • gradPlus (H:=H) f u := by
-    -- product rule on `f * (1/g)`
-    simpa [Pi.div_def] using
-      (gradPlus_mul (H:=H) (u:=u) (hf:=hf) (hg:=hg))
-  -- substitute the inverse gradient and simplify
-  have h1 : star ((fun x => (g x)⁻¹) u) = (1 : ℂ) / (star (g u)) := by
-    simp [one_div, map_inv₀]
-  simpa [this, hinv, smul_add, add_comm, add_left_comm, add_assoc,
-         sub_eq_add_neg, div_eq_mul_inv, mul_comm, mul_left_comm, mul_assoc, pow_two] using
-    (by
-      -- write everything over `(conj g)^2`
-      calc
-        (star (f u)) • ( - ( (1 : ℂ) / (star (g u))^2 ) • gradPlus (H:=H) g u)
-            + ((1 : ℂ) / (star (g u))) • gradPlus (H:=H) f u
-        = ((1 : ℂ) / (star (g u))^2)
-            • ( - (star (f u)) • gradPlus (H:=H) g u
-                + (star (g u)) • gradPlus (H:=H) f u) := by
-              ring_nf; by_cases h0 : star (g u) = 0
-              · -- degenerate case can't occur since `g u ≠ 0`
-                have : False := by simpa using congrArg star.ne_iff.mpr hgu
-                exact this.elim
-              ·
-                have : (1 : ℂ) / (star (g u))
-                          = ((1 : ℂ) / (star (g u))^2) * (star (g u)) := by
-                  field_simp [h0, pow_two]
-                simpa [this, smul_add, add_comm, add_left_comm, add_assoc,
-                       smul_smul, mul_comm, mul_left_comm, mul_assoc, sub_eq_add_neg]
-        _ = ((star (g u)) • gradPlus (H:=H) f u
-              - (star (f u)) • gradPlus (H:=H) g u) / (star (g u))^2 := by
-              simp [div_eq_mul_inv, sub_eq_add_neg, mul_comm, mul_left_comm, mul_assoc])
+  calc
+    gradPlus (H:=H) (fun x => f x / g x) u
+        = gradPlus (H:=H) (fun x => f x * (g x)⁻¹) u := by simpa [hfg]
+    _   = (star (f u)) • gradPlus (H:=H) (fun x => (g x)⁻¹) u
+            + (star ((g u)⁻¹)) • gradPlus (H:=H) f u := by
+            simpa using hmul
+    _   = (star (f u)) • ( - ((star (g u))⁻¹ * (star (g u))⁻¹) • gradPlus (H:=H) g u )
+            + ((star (g u))⁻¹) • gradPlus (H:=H) f u := by
+            simpa [hinv, star_inv]
+    _   = ((star (g u))⁻¹ * (star (g u))⁻¹) •
+            ( (star (g u)) • gradPlus (H:=H) f u
+              - (star (f u)) • gradPlus (H:=H) g u ) := by
+      simp [smul_add, smul_smul, sub_eq_add_neg, mul_comm]
 
-/-- Quotient rule for `∇₋`:
-`∇₋(f/g)[u] = (g[u] • ∇₋ f[u] - f[u] • ∇₋ g[u]) / (g[u])^2`,
-assuming `g[u] ≠ 0`. -/
+/-- Quotient rule for `∇₋` (product-of-inverses shape), assuming `g[u] ≠ 0`. -/
 lemma gradMinus_div
   {f g : H → ℂ} {u : H} {Df Dg : H →L[ℝ] ℂ}
   (hf : HasRDerivAt f u Df) (hg : HasRDerivAt g u Dg) (hgu : g u ≠ 0) :
   gradMinus (H:=H) (fun x => f x / g x) u
-    = ((g u) • gradMinus (H:=H) f u
-        - (f u) • gradMinus (H:=H) g u) / (g u)^2 := by
+    = ((g u)⁻¹ * (g u)⁻¹) •
+        ( (g u) • gradMinus (H:=H) f u
+          - (f u) • gradMinus (H:=H) g u ) := by
+  have hInv : HasRDerivAt (fun x => (g x)⁻¹) u
+      ((mulLeftCLM ( - ((g u)⁻¹ * (g u)⁻¹))).comp Dg) :=
+    hasRDerivAt_inv_from_hasDeriv (H:=H) (u:=u) (Dg:=Dg) hg hgu
+  have hmul := gradMinus_mul (H:=H) (u:=u) (hf:=hf) (hg:=hInv)
+  have hfg : (fun x => f x / g x) = (fun x => f x * (g x)⁻¹) := by
+    funext x; simp [Pi.div_def]
   have hinv := gradMinus_inv (H:=H) (u:=u) (hg:=hg) hgu
-  have : gradMinus (H:=H) (fun x => f x / g x) u
-          = (f u) • gradMinus (H:=H) (fun x => (g x)⁻¹) u
-            + ((fun x => (g x)⁻¹) u) • gradMinus (H:=H) f u := by
-    simpa [Pi.div_def] using
-      (gradMinus_mul (H:=H) (u:=u) (hf:=hf) (hg:=hg))
-  have h1 : ((fun x => (g x)⁻¹) u) = (1 : ℂ) / (g u) := by simp [one_div]
-  -- substitute and clear denominators
-  simpa [this, hinv, smul_add, add_comm, add_left_comm, add_assoc,
-         sub_eq_add_neg, div_eq_mul_inv, mul_comm, mul_left_comm, mul_assoc, pow_two] using
-    (by
-      calc
-        (f u) • ( - ((1 : ℂ) / (g u)^2) • gradMinus (H:=H) g u)
-            + ((1 : ℂ) / (g u)) • gradMinus (H:=H) f u
-        = ((1 : ℂ) / (g u)^2)
-            • ( - (f u) • gradMinus (H:=H) g u
-                + (g u) • gradMinus (H:=H) f u) := by
-              by_cases h0 : g u = 0
-              · exact (hgu h0).elim
-              ·
-                have : (1 : ℂ) / (g u)
-                          = ((1 : ℂ) / (g u)^2) * (g u) := by
-                  field_simp [h0, pow_two]
-                simpa [this, smul_add, add_comm, add_left_comm, add_assoc,
-                       smul_smul, mul_comm, mul_left_comm, mul_assoc, sub_eq_add_neg]
-        _ = ((g u) • gradMinus (H:=H) f u
-              - (f u) • gradMinus (H:=H) g u) / (g u)^2 := by
-              simp [div_eq_mul_inv, sub_eq_add_neg, mul_comm, mul_left_comm, mul_assoc])
+  calc
+    gradMinus (H:=H) (fun x => f x / g x) u
+        = gradMinus (H:=H) (fun x => f x * (g x)⁻¹) u := by simpa [hfg]
+    _   = (f u) • gradMinus (H:=H) (fun x => (g x)⁻¹) u
+            + ((g u)⁻¹) • gradMinus (H:=H) f u := by
+            simpa using hmul
+    _   = (f u) • ( - ((g u)⁻¹ * (g u)⁻¹) • gradMinus (H:=H) g u )
+            + ((g u)⁻¹) • gradMinus (H:=H) f u := by
+            simpa [hinv]
+    _   = ((g u)⁻¹ * (g u)⁻¹) •
+            ( (g u) • gradMinus (H:=H) f u
+              - (f u) • gradMinus (H:=H) g u ) := by
+      simp [smul_add, smul_smul, sub_eq_add_neg, mul_comm]
+
+/-! ### Convenience inner-product forms for the inverse rules -/
+section inverse_inner_forms
+variable {H : Type u}
+variable [NormedAddCommGroup H] [InnerProductSpace ℂ H] [CompleteSpace H]
+
+/-- Right-slot inner form for `∇₋(1/g)`:
+`inner v (∇₋(1/g) u) = -((g u)⁻¹ * (g u)⁻¹ * inner v (∇₋g u))`. -/
+@[simp]
+lemma inner_v_gradMinus_inv
+  {g : H → ℂ} {u : H} {Dg : H →L[ℝ] ℂ}
+  (hg : HasRDerivAt g u Dg) (hgu : g u ≠ 0) (v : H) :
+  inner (𝕜 := ℂ) v (gradMinus (H:=H) (fun x => (g x)⁻¹) u)
+    = -((g u)⁻¹ * (g u)⁻¹ * inner (𝕜 := ℂ) v (gradMinus (H:=H) g u)) := by
+  have hv :=
+    congrArg (fun z => inner (𝕜 := ℂ) v z)
+      (gradMinus_inv (H:=H) (u:=u) (g:=g) (Dg:=Dg) hg hgu)
+  have : inner (𝕜 := ℂ) v (gradMinus (H:=H) (fun x => (g x)⁻¹) u)
+        = - ((g u)⁻¹ * (g u)⁻¹) * inner (𝕜 := ℂ) v (gradMinus (H:=H) g u) := by
+    simpa [inner_smul_right_comm] using hv
+  simpa [mul_comm, mul_left_comm, mul_assoc] using this
+
+/-- Left-slot inner form for `∇₋(1/g)`:
+`inner (∇₋(1/g) u) v
+  = -((conj (g u))⁻¹ * (conj (g u))⁻¹ * inner (∇₋g u) v)`. -/
+@[simp]
+lemma inner_gradMinus_inv_left
+  {g : H → ℂ} {u : H} {Dg : H →L[ℝ] ℂ}
+  (hg : HasRDerivAt g u Dg) (hgu : g u ≠ 0) (v : H) :
+  inner (𝕜 := ℂ) (gradMinus (H:=H) (fun x => (g x)⁻¹) u) v
+    = -(((star (g u))⁻¹) * ((star (g u))⁻¹) * inner (𝕜 := ℂ) (gradMinus (H:=H) g u) v) := by
+  have hv :=
+    congrArg (fun z => inner (𝕜 := ℂ) z v)
+      (gradMinus_inv (H:=H) (u:=u) (g:=g) (Dg:=Dg) hg hgu)
+  have : inner (𝕜 := ℂ) (gradMinus (H:=H) (fun x => (g x)⁻¹) u) v
+        = inner (𝕜 := ℂ) (gradMinus (H:=H) g u) v * (star ( - ((g u)⁻¹ * (g u)⁻¹))) := by
+    simpa [inner_smul_left_comm] using hv
+  simpa [star_mul, star_inv, map_neg, mul_comm, mul_left_comm, mul_assoc] using this
+
+/-- Left-slot inner form for `∇₊(1/g)`:
+`inner (∇₊(1/g) u) v
+  = -((conj (g u))⁻¹ * (conj (g u))⁻¹ * inner (∇₊g u) v)`. -/
+@[simp]
+lemma inner_gradPlus_inv_left
+  {g : H → ℂ} {u : H} {Dg : H →L[ℝ] ℂ}
+  (hg : HasRDerivAt g u Dg) (hgu : g u ≠ 0) (v : H) :
+  inner (𝕜 := ℂ) (gradPlus (H:=H) (fun x => (g x)⁻¹) u) v
+    = -(((star (g u))⁻¹) * ((star (g u))⁻¹) * inner (𝕜 := ℂ) (gradPlus (H:=H) g u) v) := by
+  have hv :=
+    congrArg (fun z => inner (𝕜 := ℂ) z v)
+      (gradPlus_inv (H:=H) (u:=u) (g:=g) (Dg:=Dg) hg hgu)
+  have : inner (𝕜 := ℂ) (gradPlus (H:=H) (fun x => (g x)⁻¹) u) v
+        = inner (𝕜 := ℂ) (gradPlus (H:=H) g u) v * (star ( - ((g u)⁻¹ * (g u)⁻¹))) := by
+    simpa [inner_smul_left_comm] using hv
+  simpa [star_mul, star_inv, map_neg, mul_comm, mul_left_comm, mul_assoc] using this
+
+end inverse_inner_forms
 
 end algebraic_ops
 

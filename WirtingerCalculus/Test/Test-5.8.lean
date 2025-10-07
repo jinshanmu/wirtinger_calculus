@@ -877,11 +877,10 @@ variable [NormedAddCommGroup H] [InnerProductSpace ℂ H]
 @[simp] lemma mul_inv_mul_inv (a : ℂ) : a * (a⁻¹ * a⁻¹) = (a : ℂ)⁻¹ := by
   by_cases h : a = 0
   · simp [h]
-  · have h1 : a * a⁻¹ = (1 : ℂ) := by
-      simpa [h] using mul_inv_cancel (a := a) h
+  · have h1 : a * a⁻¹ = (1 : ℂ) := by simp [h]
     calc
-      a * (a⁻¹ * a⁻¹) = (a * a⁻¹) * a⁻¹ := by simpa [mul_assoc]
-      _ = 1 * a⁻¹ := by simpa [h1]
+      a * (a⁻¹ * a⁻¹) = (a * a⁻¹) * a⁻¹ := by simp [mul_assoc]
+      _ = 1 * a⁻¹ := by simp [h1]
       _ = a⁻¹ := by simp
 
 /-! ### Left-multiplication by a fixed complex number as an ℝ-CLM -/
@@ -1019,11 +1018,10 @@ lemma Dminus_mul
 
 @[simp] lemma inner_smul_right_comm (x y : H) (a : ℂ) :
     inner (𝕜 := ℂ) x (a • y) = inner (𝕜 := ℂ) x y * a := by
-  simpa [mul_comm] using (inner_smul_right (x := x) (y := y) (a := a))
-
+  simp [mul_comm]
 @[simp] lemma inner_smul_left_comm (a : ℂ) (x y : H) :
     inner (𝕜 := ℂ) (a • x) y = inner (𝕜 := ℂ) x y * (star a) := by
-  simpa [mul_comm] using (inner_smul_left (a := a) (x := x) (y := y))
+  simp
 
 /-- Canonical inverse chain rule over `ℝ` (restrictScalars version). -/
 lemma hasRDerivAt_inv_from_hasDeriv
@@ -1186,7 +1184,7 @@ lemma gradMinus_mul
 
 /-- Helper: rewrite the scalar appearing in the derivative of `z ↦ z⁻¹`. -/
 @[simp] lemma inv_sq_eq_inv_mul_inv (w : ℂ) : (w^2)⁻¹ = w⁻¹ * w⁻¹ := by
-  simpa [one_div, pow_two, mul_comm] using (one_div_mul_one_div w w).symm
+  simp [pow_two]
 
 /-- Over `ℂ`, the Fréchet derivative of `z ↦ z⁻¹` at a nonzero `w` is
 `((1 : ℂ →L[ℂ] ℂ).smulRight (-(w⁻¹ * w⁻¹)))`. -/
